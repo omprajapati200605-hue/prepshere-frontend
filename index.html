@@ -1,19 +1,986 @@
-<!DOCTYPE html>
-<html lang="en">
+import React, { useState, useEffect, useMemo, createContext, useContext } from 'react';
+import {
+LayoutDashboard, Mic, BarChart3, Calendar, Trophy, FileText, User, Settings,
+LogOut, ChevronRight, CheckCircle2, Star, Zap, Target, BookOpen,
+Lock, Mail, Github, Chrome, Menu, X, Timer, MessageSquare,
+Code, Award, TrendingUp, Download, Plus, Trash2, Edit3, Eye
+} from 'lucide-react';
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSphere Front End</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+// --- CONFIG & THEME ---
+const THEME = {
+bg: '#0A0F1E',
+card: 'rgba(255, 255, 255, 0.05)',
+accent: '#00D4FF',
+gold: '#FFD166',
+text: '#E2E8F0',
+muted: '#94A3B8',
+};
 
-<body>
-    <main style="text-align: center; margin-top: 20vh; font-family: sans-serif;">
-        <h1>Welcome to WebSphere</h1>
-        <p>If you can see this, your deployment worked perfectly!</p>
-    </main>
-    <script src="script.js"></script>
-</body>
+const TRACKS = [
+{ id: 'ds', name: 'Data Science', icon: '📊', desc: 'Statistics, Probability, and Analysis' },
+{ id: 'ml', name: 'Machine Learning', icon: '🤖', desc: 'Algorithms, Supervised & Unsupervised' },
+{ id: 'web', name: 'Web Development', icon: '🌐', desc: 'React, Node, CSS, and Architecture' },
+{ id: 'sys', name: 'System Design', icon: '📦', desc: 'Scalability, Load Balancing, DBs' },
+{ id: 'pm', name: 'Product Manager', icon: '🎯', desc: 'Strategy, Metrics, and Case Studies' },
+{ id: 'dsa', name: 'Data Structures', icon: '💻', desc: 'Arrays, Trees, Graphs, Optimization' }
+];
 
-</html>
+const QUESTION_BANK = {
+ds: [
+{ id: 1, type: 'Conceptual', q: "Explain the difference between L1 and L2 regularization.", hint: "Think about sparsity
+vs weight decay." },
+{ id: 2, type: 'Conceptual', q: "What is the P-value and how is it interpreted?", hint: "Focus on the null hypothesis."
+},
+{ id: 3, type: 'Behavioral', q: "Describe a time you used data to influence a business decision.", hint: "Use the STAR
+method." }
+],
+web: [
+{ id: 1, type: 'Coding', q: "Implement a custom 'useFetch' hook in React.", hint: "Remember useEffect and cleaning up
+states." },
+{ id: 2, type: 'Conceptual', q: "Explain Event Delegation in JavaScript.", hint: "Think about bubbling and capturing."
+},
+{ id: 3, type: 'Case Study', q: "How would you optimize a slow React application?", hint: "Mention memoization and
+virtualization." }
+]
+};
+
+// --- UTILS ---
+const saveToLocal = (key, val) => localStorage.setItem(`prepsphere_${key}`, JSON.stringify(val));
+const getFromLocal = (key) => JSON.parse(localStorage.getItem(`prepsphere_${key}`));
+
+// --- STYLES ---
+const GlobalStyles = () => (
+<style>
+    {
+        ` @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=Syne:wght@600;700;800&display=swap');
+
+        :root {
+            color-scheme: dark;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'IBM Plex Sans', sans-serif;
+
+            background: $ {
+                THEME.bg
+            }
+
+            ;
+
+            color: $ {
+                THEME.text
+            }
+
+            ;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Syne', sans-serif;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .glass:hover {
+            border-color: $ {
+                THEME.accent
+            }
+
+            44;
+
+            box-shadow: 0 0 20px $ {
+                THEME.accent
+            }
+
+            11;
+        }
+
+        .mesh-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 0% 0%, #0c1833 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, #0d1226 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, #0a0f1e 0%, transparent 100%);
+            z-index: -1;
+        }
+
+        @keyframes pulse-glow {
+            0% {
+                box-shadow: 0 0 5px $ {
+                    THEME.accent
+                }
+
+                44;
+            }
+
+            50% {
+                box-shadow: 0 0 20px $ {
+                    THEME.accent
+                }
+
+                88;
+            }
+
+            100% {
+                box-shadow: 0 0 5px $ {
+                    THEME.accent
+                }
+
+                44;
+            }
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, $ {
+                    THEME.accent
+                }
+
+                , #0081ff);
+            color: white;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 10px;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            color: $ {
+                THEME.muted
+            }
+
+            ;
+        }
+
+        .nav-item.active {
+            background: rgba(0, 212, 255, 0.1);
+
+            color: $ {
+                THEME.accent
+            }
+
+            ;
+
+            border-right: 3px solid $ {
+                THEME.accent
+            }
+
+            ;
+        }
+
+        .nav-item:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: white;
+                color: black;
+            }
+
+            .resume-preview {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+        }
+
+        `
+    }
+</style>
+);
+
+// --- COMPONENTS ---
+
+const Badge = ({ children, color = THEME.accent }) => (
+<span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor:
+    `${color}22`, color: color, border: `1px solid ${color}44` }}>
+    {children}
+</span>
+);
+
+const ProgressBar = ({ progress, color = THEME.accent }) => (
+<div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+    <div className="h-full transition-all duration-700 ease-out" style={{ width: `${progress}%`, backgroundColor: color
+        }} />
+</div>
+);
+
+// --- CONTEXT ---
+const AppContext = createContext();
+
+const AppProvider = ({ children }) => {
+const [user, setUser] = useState(getFromLocal('user') || null);
+const [view, setView] = useState('dashboard');
+const [interviews, setInterviews] = useState(getFromLocal('interviews') || []);
+const [roadmap, setRoadmap] = useState(getFromLocal('roadmap') || null);
+
+const login = (userData) => { setUser(userData); saveToLocal('user', userData); };
+const logout = () => { setUser(null); localStorage.removeItem('prepsphere_user'); };
+const addInterview = (session) => {
+const updated = [...interviews, session];
+setInterviews(updated);
+saveToLocal('interviews', updated);
+};
+
+return (
+<AppContext.Provider value={{ user, setUser, view, setView, login, logout, interviews, addInterview, roadmap, setRoadmap
+    }}>
+    {children}
+</AppContext.Provider>
+);
+};
+
+// --- AUTH MODULE ---
+const AuthSystem = () => {
+const { login } = useContext(AppContext);
+const [isLogin, setIsLogin] = useState(true);
+const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Student' });
+
+const handleSubmit = (e) => {
+e.preventDefault();
+login({ ...formData, onboardingComplete: false, xp: 0, level: 1 });
+};
+
+return (
+<div className="min-h-screen flex items-center justify-center p-4">
+    <div className="w-full max-w-5xl flex h-[600px] glass overflow-hidden">
+        {/* Left Branding */}
+        <div
+            className="hidden lg:flex w-1/2 bg-[#00D4FF11] flex-col justify-center p-12 border-r border-white/10 relative overflow-hidden">
+            <div className="absolute top-[-50px] right-[-50px] w-64 h-64 bg-cyan-500/20 rounded-full blur-[80px]" />
+            <div className="z-10">
+                <div className="flex items-center gap-2 mb-6">
+                    <div
+                        className="w-10 h-10 bg-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/50">
+                        <Target className="text-white" />
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight">PREP<span className="text-cyan-400">SPHERE</span>
+                    </h1>
+                </div>
+                <h2 className="text-4xl font-bold mb-4 leading-tight">Master your next tech interview with AI.</h2>
+                <p className="text-slate-400 text-lg">Personalized roadmap, real-time analytics, and realistic mock
+                    interviews for modern engineers.</p>
+            </div>
+        </div>
+
+        {/* Right Form */}
+        <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center">
+            <div className="mb-8">
+                <h3 className="text-2xl font-bold">{isLogin ? 'Welcome Back' : 'Create Account'}</h3>
+                <p className="text-slate-400">{isLogin ? 'Enter your credentials to continue' : 'Join thousands of
+                    professionals'}</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                <input type="text" placeholder="Full Name" required
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                    onChange={e=> setFormData({...formData, name: e.target.value})} />
+                )}
+                <input type="email" placeholder="Email Address" required
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                    onChange={e=> setFormData({...formData, email: e.target.value})} />
+                <input type="password" placeholder="Password" required
+                    className="w-full bg-white/5 border border-white/10 p-3 rounded-lg focus:outline-none focus:border-cyan-500 transition-colors"
+                    onChange={e=> setFormData({...formData, password: e.target.value})} />
+
+                <button className="w-full btn-primary mt-4">{isLogin ? 'Sign In' : 'Get Started'}</button>
+            </form>
+
+            <div className="mt-8 flex items-center gap-4">
+                <div className="h-[1px] flex-1 bg-white/10"></div>
+                <span className="text-xs text-slate-500 uppercase">Or continue with</span>
+                <div className="h-[1px] flex-1 bg-white/10"></div>
+            </div>
+
+            <div className="flex gap-4 mt-6">
+                <button
+                    className="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-2 rounded-lg hover:bg-white/10 transition-all">
+                    <Chrome size={18} /> Google
+                </button>
+                <button
+                    className="flex-1 flex items-center justify-center gap-2 bg-white/5 border border-white/10 py-2 rounded-lg hover:bg-white/10 transition-all">
+                    <Github size={18} /> GitHub
+                </button>
+            </div>
+
+            <p className="mt-8 text-center text-sm text-slate-400">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}
+                <button onClick={()=> setIsLogin(!isLogin)} className="text-cyan-400 ml-2 font-medium hover:underline">
+                    {isLogin ? 'Sign Up' : 'Log In'}
+                </button>
+            </p>
+        </div>
+    </div>
+</div>
+);
+};
+
+// --- PROFILE WIZARD ---
+const ProfileWizard = () => {
+const { user, setUser } = useContext(AppContext);
+const [step, setStep] = useState(1);
+const [profile, setProfile] = useState({
+city: '', linkedIn: '', degree: '', skills: [], focus: [], experience: 0
+});
+
+const handleComplete = () => {
+setUser({ ...user, ...profile, onboardingComplete: true });
+saveToLocal('user', { ...user, ...profile, onboardingComplete: true });
+};
+
+const steps = [
+{ title: "Basic Info", fields: ["name", "city", "linkedIn"] },
+{ title: "Education", fields: ["degree", "college", "gradYear"] },
+{ title: "Expertise", fields: ["focus"] },
+{ title: "Experience", fields: ["years", "skills"] },
+{ title: "Goals", fields: ["targetRole", "timeline"] }
+];
+
+return (
+<div className="max-w-2xl mx-auto py-20 px-6">
+    <div className="mb-12">
+        <div className="flex justify-between items-end mb-4">
+            <div>
+                <span className="text-cyan-400 font-bold uppercase tracking-widest text-xs">Onboarding Step {step} of
+                    5</span>
+                <h2 className="text-3xl font-bold mt-1">{steps[step-1].title}</h2>
+            </div>
+            <span className="text-slate-500 font-medium">{step * 20}% Complete</span>
+        </div>
+        <ProgressBar progress={step * 20} />
+    </div>
+
+    <div className="glass p-8 min-h-[400px] flex flex-col">
+        {step === 1 && (
+        <div className="space-y-6">
+            <div className="flex flex-col gap-2">
+                <label className="text-sm text-slate-400">Profile Photo</label>
+                <div
+                    className="w-24 h-24 rounded-full bg-cyan-500/20 border-2 border-dashed border-cyan-500/40 flex items-center justify-center cursor-pointer">
+                    <Plus className="text-cyan-400" />
+                </div>
+            </div>
+            <input type="text" placeholder="City / Location"
+                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl" onChange={e=>setProfile({...profile,
+            city: e.target.value})} />
+            <input type="text" placeholder="LinkedIn URL"
+                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl" onChange={e=>setProfile({...profile,
+            linkedIn: e.target.value})} />
+        </div>
+        )}
+
+        {step === 2 && (
+        <div className="space-y-6">
+            <input type="text" placeholder="Degree / Major"
+                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl" />
+            <input type="text" placeholder="University Name"
+                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl" />
+            <div className="flex gap-4">
+                <input type="number" placeholder="Graduation Year"
+                    className="flex-1 bg-white/5 border border-white/10 p-4 rounded-xl" />
+                <input type="text" placeholder="CGPA"
+                    className="flex-1 bg-white/5 border border-white/10 p-4 rounded-xl" />
+            </div>
+        </div>
+        )}
+
+        {step === 3 && (
+        <div className="grid grid-cols-2 gap-4">
+            {TRACKS.map(t => (
+            <button key={t.id} onClick={()=> setProfile({...profile, focus: [...profile.focus, t.name]})}
+                className="p-4 glass text-left hover:bg-cyan-500/10 flex items-center gap-3">
+                <span className="text-2xl">{t.icon}</span>
+                <span className="font-medium">{t.name}</span>
+            </button>
+            ))}
+        </div>
+        )}
+
+        {step === 4 && (
+        <div className="space-y-8">
+            <div>
+                <label className="block mb-4 text-slate-400">Years of Experience: <span
+                        className="text-white font-bold">{profile.experience}</span></label>
+                <input type="range" min="0" max="15" className="w-full accent-cyan-400"
+                    onChange={e=>setProfile({...profile, experience: e.target.value})} />
+            </div>
+            <textarea placeholder="List your top skills (comma separated)"
+                className="w-full bg-white/5 border border-white/10 p-4 rounded-xl h-32" />
+        </div>
+        )}
+
+        {step === 5 && (
+        <div className="space-y-6">
+            <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-slate-400">
+                <option>Target Company Type</option>
+                <option>Big Tech (FAANG)</option>
+                <option>Early-stage Startup</option>
+                <option>Fortune 500</option>
+            </select>
+            <select className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-slate-400">
+                <option>Preparation Timeline</option>
+                <option>Immediately (Next 2 weeks)</option>
+                <option>Next 1 month</option>
+                <option>3 months+</option>
+            </select>
+        </div>
+        )}
+
+        <div className="mt-auto pt-8 flex justify-between">
+            <button disabled={step===1} onClick={()=> setStep(s => s - 1)} className="px-6 py-2 text-slate-400
+                font-medium disabled:opacity-0">Back</button>
+            <button onClick={()=> step === 5 ? handleComplete() : setStep(s => s + 1)} className="btn-primary flex
+                items-center gap-2">
+                {step === 5 ? 'Finish Setup' : 'Continue'}
+                <ChevronRight size={18} />
+            </button>
+        </div>
+    </div>
+</div>
+);
+};
+
+// --- INTERVIEW ENGINE ---
+const InterviewSession = ({ track, level, onEnd }) => {
+const [currentIdx, setCurrentIdx] = useState(0);
+const [timeLeft, setTimeLeft] = useState(15 * 60);
+const [answers, setAnswers] = useState({});
+const [showHint, setShowHint] = useState(false);
+
+const questions = QUESTION_BANK[track.id] || QUESTION_BANK['ds'];
+const currentQ = questions[currentIdx];
+
+useEffect(() => {
+const timer = setInterval(() => setTimeLeft(t => t > 0 ? t - 1 : 0), 1000);
+return () => clearInterval(timer);
+}, []);
+
+const formatTime = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
+const handleNext = () => {
+if (currentIdx < questions.length - 1) { setCurrentIdx(currentIdx + 1); setShowHint(false); } else { onEnd({ track,
+    level, answers, duration: 15 * 60 - timeLeft, score: 85 }); } }; return ( <div
+    className="fixed inset-0 bg-[#0A0F1E] z-50 p-6 flex flex-col">
+    <div className="flex justify-between items-center mb-8 glass px-6 py-4">
+        <div className="flex items-center gap-4">
+            <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center font-bold text-white">
+                {track.icon}
+            </div>
+            <div>
+                <h3 className="font-bold">{track.name} Interview</h3>
+                <p className="text-xs text-slate-400">{level} Difficulty • Question {currentIdx + 1} of
+                    {questions.length}</p>
+            </div>
+        </div>
+        <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 text-xl font-mono text-cyan-400">
+                <Timer size={20} /> {formatTime(timeLeft)}
+            </div>
+            <button onClick={()=> { if(confirm("End session?")) onEnd(null); }} className="p-2 hover:bg-white/10
+                rounded-full">
+                <X />
+            </button>
+        </div>
+    </div>
+
+    <div className="flex-1 max-w-4xl mx-auto w-full flex flex-col">
+        <div className="mb-6">
+            <Badge color={THEME.accent}>{currentQ.type}</Badge>
+            <h2 className="text-2xl font-bold mt-4 leading-relaxed">{currentQ.q}</h2>
+        </div>
+
+        <div className="flex-1 relative">
+            <textarea value={answers[currentIdx] || '' } onChange={(e)=> setAnswers({...answers, [currentIdx]: e.target.value})}
+            placeholder="Type your detailed answer here..."
+            className="w-full h-full bg-white/5 border border-white/10 p-8 rounded-2xl focus:outline-none focus:border-cyan-500/50 text-lg leading-relaxed resize-none"
+          />
+          <div className="absolute bottom-6 right-6 text-slate-500 text-sm">
+            {answers[currentIdx]?.length || 0} characters
+          </div>
+        </div>
+
+        <div className="mt-8 flex justify-between items-center">
+          <button onClick={() => setShowHint(!showHint)} className="text-slate-400 hover:text-cyan-400 flex items-center gap-2 transition-colors">
+            <BookOpen size={18} /> {showHint ? currentQ.hint : "Show Hint"}
+          </button>
+          <div className="flex gap-4">
+            <button className="px-6 py-3 glass font-medium">Skip</button>
+            <button onClick={handleNext} className="btn-primary min-w-[140px]">
+              {currentIdx === questions.length - 1 ? 'Finish Interview' : 'Next Question'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN DASHBOARD VIEWS ---
+
+const DashboardHome = () => {
+  const { user, interviews, setView } = useContext(AppContext);
+  const latestScore = interviews.length > 0 ? interviews[interviews.length-1].score : 0;
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-4xl font-black mb-2">Ready for success, {user.name.split(' ')[0]}?</h1>
+          <p className="text-slate-400">You're currently in the <span className="text-cyan-400">Top 12%</span> of candidates this month.</p>
+        </div>
+        <div className="flex gap-4">
+          <div className="glass px-6 py-3 text-center">
+            <div className="text-xs text-slate-500 uppercase font-bold mb-1">XP Points</div>
+            <div className="text-xl font-black text-cyan-400">{user.xp || 1250}</div>
+          </div>
+          <div className="glass px-6 py-3 text-center">
+            <div className="text-xs text-slate-500 uppercase font-bold mb-1">Current Level</div>
+            <div className="text-xl font-black text-yellow-500">Lvl {user.level || 4}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 glass p-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+            <TrendingUp size={120} />
+          </div>
+          <div className="relative z-10">
+            <h3 className="text-xl font-bold mb-6 flex items-center gap-2"><Zap className="text-cyan-400" /> Recent Performance</h3>
+            <div className="flex items-end gap-12">
+              <div>
+                <div className="text-5xl font-black text-white mb-2">{latestScore}%</div>
+                <div className="flex items-center gap-2 text-green-400 text-sm font-bold">
+                  <TrendingUp size={14} /> +12% from last week
+                </div>
+              </div>
+              <div className="flex-1 grid grid-cols-7 gap-2 items-end h-24">
+                {[40, 65, 55, 80, 70, 90, 85].map((h, i) => (
+                  <div key={i} className="bg-cyan-500/20 rounded-t-sm hover:bg-cyan-500/50 transition-all cursor-pointer" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="glass p-8 flex flex-col justify-between border-l-4 border-l-yellow-500">
+          <div>
+            <h3 className="text-xl font-bold mb-2">Next Milestone</h3>
+            <p className="text-slate-400 text-sm mb-6">Complete 3 more Mock Interviews to reach "Expert" level.</p>
+          </div>
+          <div className="space-y-4">
+            <div className="flex justify-between text-xs font-bold uppercase tracking-widest">
+              <span>Progress</span>
+              <span>75%</span>
+            </div>
+            <ProgressBar progress={75} color={THEME.gold} />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold">Recommended Tracks</h3>
+          <button onClick={() => setView('interview')} className="text-cyan-400 font-medium hover:underline">View All</button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {TRACKS.slice(0, 4).map(track => (
+            <div key={track.id} onClick={() => setView('interview')} className="glass p-6 cursor-pointer hover:translate-y-[-5px]">
+              <div className="text-3xl mb-4">{track.icon}</div>
+              <h4 className="font-bold mb-1">{track.name}</h4>
+              <p className="text-xs text-slate-500 mb-4">{track.desc}</p>
+              <div className="flex items-center justify-between">
+                <Badge>Advanced</Badge>
+                <div className="text-cyan-400"><ChevronRight size={18}/></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AnalysisView = () => {
+  return (
+    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+      <h1 className="text-4xl font-black">Deep Analysis</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="glass p-8">
+          <h3 className="text-xl font-bold mb-8">Skill Mastery Radar</h3>
+          <div className="aspect-square flex items-center justify-center relative">
+            {/* Mock Radar SVG */}
+            <svg viewBox="0 0 200 200" className="w-full max-w-[300px]">
+              <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="100" cy="100" r="60" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="100" cy="100" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <line x1="100" y1="20" x2="100" y2="180" stroke="rgba(255,255,255,0.05)" />
+              <line x1="20" y1="100" x2="180" y2="100" stroke="rgba(255,255,255,0.05)" />
+              <polygon points="100,40 160,80 150,140 100,170 50,140 40,80" fill="rgba(0, 212, 255, 0.2)" stroke="#00D4FF" strokeWidth="2" />
+            </svg>
+            <div className="absolute top-0 text-[10px] font-bold text-slate-500">KNOWLEDGE</div>
+            <div className="absolute bottom-0 text-[10px] font-bold text-slate-500">ACCURACY</div>
+            <div className="absolute right-0 text-[10px] font-bold text-slate-500">SPEED</div>
+            <div className="absolute left-0 text-[10px] font-bold text-slate-500">DEPTH</div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="glass p-6 border-l-4 border-l-green-500">
+            <h4 className="text-green-400 font-bold mb-2 flex items-center gap-2"><Star size={16}/> Strengths</h4>
+            <div className="flex flex-wrap gap-2">
+              {['Data Modeling', 'System Design Fundamentals', 'Python Scripting', 'Communication'].map(s => <Badge key={s} color="#4ADE80">{s}</Badge>)}
+            </div>
+          </div>
+          <div className="glass p-6 border-l-4 border-l-red-500">
+            <h4 className="text-red-400 font-bold mb-2 flex items-center gap-2"><Target size={16}/> Areas for Improvement</h4>
+            <div className="flex flex-wrap gap-2">
+              {['Distributed Caching', 'SQL Join Optimization', 'Dynamic Programming'].map(s => <Badge key={s} color="#F87171">{s}</Badge>)}
+            </div>
+          </div>
+          <div className="glass p-8 bg-gradient-to-br from-cyan-500/10 to-blue-500/10">
+            <h3 className="text-2xl font-bold mb-2">67th Percentile</h3>
+            <p className="text-slate-400 text-sm">You are performing better than 67% of candidates in the Web Development track.</p>
+            <div className="mt-6 h-4 bg-white/5 rounded-full relative">
+              <div className="absolute left-[67%] -top-2 w-1 h-8 bg-cyan-400 shadow-[0_0_10px_cyan]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const RoadmapView = () => {
+  const roadmapData = [
+    { week: 1, title: 'Foundation Repair', topics: ['Basic Algorithms', 'Complex Space/Time Analysis', 'Memory Management'] },
+    { week: 2, title: 'Core Skill Building', topics: ['Concurrency & Parallelism', 'Database Sharding', 'Microservices Architecture'] },
+    { week: 3, title: 'Mock Practice Intensive', topics: ['Live Coding Drills', 'Behavioral Deep Dive', 'Case Study Frameworks'] },
+    { week: 4, title: 'Final Polish', topics: ['Portfolio Review', 'Negotiation Tactics', 'Confidence Workshops'] }
+  ];
+
+  return (
+    <div className="max-w-4xl space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-4xl font-black">Your 30-Day Path</h1>
+          <p className="text-slate-400">Custom generated roadmap based on your recent performance.</p>
+        </div>
+        <button onClick={() => window.print()} className="btn-secondary flex items-center gap-2"><Download size={18}/> Export PDF</button>
+      </div>
+
+      <div className="space-y-6">
+        {roadmapData.map((item, idx) => (
+          <div key={idx} className="glass p-8 relative">
+            <div className="absolute -left-3 top-8 w-6 h-6 bg-cyan-500 rounded-full border-4 border-[#0A0F1E]" />
+            <div className="flex gap-8">
+              <div className="w-24 shrink-0">
+                <span className="text-xs font-black uppercase text-cyan-400">Week 0{item.week}</span>
+                <div className="text-3xl font-bold">Step</div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold mb-4">{item.title}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {item.topics.map(topic => (
+                    <div key={topic} className="bg-white/5 p-4 rounded-xl border border-white/5 flex items-center gap-3">
+                      <div className="w-5 h-5 rounded border border-white/20 flex items-center justify-center"><CheckCircle2 size={12} className="text-slate-800" /></div>
+                      <span className="text-sm font-medium">{topic}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const ResumeBuilder = () => {
+  const { user } = useContext(AppContext);
+  const [template, setTemplate] = useState(1);
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center no-print">
+        <h1 className="text-4xl font-black">AI Resume Builder</h1>
+        <div className="flex gap-4">
+          <div className="flex p-1 glass gap-2">
+            {[1, 2, 3].map(t => (
+              <button key={t} onClick={() => setTemplate(t)} className={`px-4 py-2 rounded-lg text-sm font-bold ${template === t ? 'bg-cyan-500 text-white' : 'hover:bg-white/5'}`}>T0{t}</button>
+            ))}
+          </div>
+          <button onClick={() => window.print()} className="btn-primary flex items-center gap-2"><Download size={18}/> Download PDF</button>
+        </div>
+      </div>
+
+      <div className="max-w-[210mm] mx-auto bg-white text-slate-900 p-[20mm] min-h-[297mm] shadow-2xl resume-preview">
+        <div className="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-8">
+          <div>
+            <h2 className="text-4xl font-bold tracking-tighter uppercase">{user.name}</h2>
+            <p className="text-cyan-600 font-bold mt-1 uppercase tracking-widest">{user.role || 'Full Stack Engineer'}</p>
+          </div>
+          <div className="text-right text-sm font-medium">
+            <p>{user.city || 'San Francisco, CA'}</p>
+            <p className="text-cyan-600">{user.email}</p>
+            <p>linkedin.com/in/prepsphere-user</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-12">
+          <div className="col-span-1 space-y-8">
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-[0.2em] mb-4 border-b border-slate-200 pb-2">Skills</h3>
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                {['React', 'Node.js', 'PostgreSQL', 'AWS', 'Python', 'System Design', 'Agile'].map(s => (
+                  <span key={s} className="bg-slate-100 px-2 py-1 rounded font-bold uppercase">{s}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-[0.2em] mb-4 border-b border-slate-200 pb-2">Education</h3>
+              <p className="font-bold text-sm">B.S. Computer Science</p>
+              <p className="text-xs text-slate-500">University of Engineering</p>
+            </div>
+          </div>
+          <div className="col-span-2 space-y-8">
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-[0.2em] mb-4 border-b border-slate-200 pb-2">Professional Summary</h3>
+              <p className="text-sm leading-relaxed text-slate-600">Highly motivated professional with expertise in building scalable applications. Recognized for high accuracy in technical challenges and deep understanding of system architecture. Successfully completed {user.interviews?.length || 0}+ technical benchmarks.</p>
+            </div>
+            <div>
+              <h3 className="font-black text-xs uppercase tracking-[0.2em] mb-4 border-b border-slate-200 pb-2">Experience</h3>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="font-bold">Senior Platform Engineer</p>
+                    <p className="text-xs font-bold text-slate-400">2021 — PRESENT</p>
+                  </div>
+                  <p className="text-xs text-cyan-600 font-bold mb-2">Global Tech Solutions</p>
+                  <ul className="text-sm text-slate-500 list-disc pl-4 space-y-1">
+                    <li>Led migration of monolith to microservices using Kubernetes.</li>
+                    <li>Reduced latency by 40% through advanced caching strategies.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AchievementsView = () => {
+  const badges = [
+    { name: 'First Interview', icon: <Target />, date: 'May 10', color: '#00D4FF' },
+    { name: '7-Day Streak', icon: <Zap />, date: 'May 17', color: '#FFD166' },
+    { name: 'Perfect Score', icon: <Award />, date: 'Unlocked', color: '#4ADE80' },
+    { name: 'All-Rounder', icon: <TrendingUp />, date: 'In Progress', color: '#A855F7' }
+  ];
+
+  return (
+    <div className="space-y-8 animate-in zoom-in duration-500">
+      <h1 className="text-4xl font-black">Hall of Fame</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {badges.map((b, i) => (
+          <div key={i} className="glass p-8 text-center flex flex-col items-center">
+            <div className="w-16 h-16 rounded-full mb-4 flex items-center justify-center" 
+              style={{ background: `${b.color}22`, border: `2px solid ${b.color}`, color: b.color }}>
+              {b.icon}
+            </div>
+            <h4 className="font-bold mb-1">{b.name}</h4>
+            <p className="text-xs text-slate-500">{b.date}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="glass p-8">
+        <h3 className="text-xl font-bold mb-6">Global Leaderboard</h3>
+        <div className="space-y-4">
+          {[
+            { rank: 1, name: 'Sarah Jenkins', xp: '15,400', role: 'Data Scientist' },
+            { rank: 2, name: 'Marcus Chen', xp: '14,250', role: 'DevOps Lead' },
+            { rank: 3, name: 'Aisha Varma', xp: '12,900', role: 'Product Manager' },
+          ].map(u => (
+            <div key={u.rank} className="flex items-center gap-4 p-4 hover:bg-white/5 rounded-xl transition-all">
+              <span className="w-6 font-black text-slate-500">{u.rank}</span>
+              <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold">{u.name[0]}</div>
+              <div className="flex-1">
+                <p className="font-bold">{u.name}</p>
+                <p className="text-xs text-slate-500">{u.role}</p>
+              </div>
+              <div className="text-right">
+                <p className="font-black text-cyan-400">{u.xp}</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase">Points</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN APP ---
+
+const MainLayout = () => {
+  const { user, view, setView, logout, addInterview } = useContext(AppContext);
+  const [activeInterview, setActiveInterview] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  if (activeInterview) {
+    return <InterviewSession track={activeInterview.track} level={activeInterview.level} onEnd={(res) => {
+      if(res) addInterview(res);
+      setActiveInterview(null);
+      setView('analysis');
+    }} />;
+  }
+
+  const NavItem = ({ id, icon: Icon, label }) => (
+    <div onClick={() => setView(id)} className={`nav-item ${view === id ? 'active' : ''}`}>
+      <Icon size={20} />
+      {isSidebarOpen && <span className="font-medium">{label}</span>}
+    </div>
+  );
+
+  return (
+    <div className="flex min-h-screen relative">
+      <div className="mesh-bg" />
+      
+      {/* Sidebar */}
+      <aside className={`no-print glass m-4 mr-0 rounded-2xl flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'} z-40 sticky top-4 h-[calc(100vh-32px)]`}>
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-cyan-500 rounded-lg shrink-0 flex items-center justify-center shadow-lg shadow-cyan-500/50">
+            <Target size={20} className="text-white" />
+          </div>
+          {isSidebarOpen && <h1 className="font-black text-xl tracking-tighter">PREP<span className="text-cyan-400">S</span></h1>}
+        </div>
+
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          <NavItem id="dashboard" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem id="interview" icon={Mic} label="Mock Interview" />
+          <NavItem id="analysis" icon={BarChart3} label="Deep Analysis" />
+          <NavItem id="roadmap" icon={Calendar} label="30-Day Road" />
+          <NavItem id="achievements" icon={Trophy} label="Achievements" />
+          <NavItem id="resume" icon={FileText} label="AI Resume" />
+        </nav>
+
+        <div className="p-4 mt-auto">
+          <div className="border-t border-white/10 pt-4 mb-4">
+             <NavItem id="profile" icon={User} label="Profile" />
+             <NavItem id="settings" icon={Settings} label="Settings" />
+          </div>
+          <button onClick={logout} className="w-full nav-item text-red-400 hover:bg-red-500/10">
+            <LogOut size={20} />
+            {isSidebarOpen && <span className="font-medium">Logout</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+        <header className="flex justify-between items-center mb-12 no-print">
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 glass hover:bg-white/10"><Menu size={20}/></button>
+          <div className="flex items-center gap-4">
+             <div className="text-right">
+                <p className="text-sm font-bold">{user.name}</p>
+                <p className="text-xs text-cyan-400 font-medium">Pro Member</p>
+             </div>
+             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 border-2 border-white/20 flex items-center justify-center font-bold text-white shadow-xl">
+               {user.name[0]}
+             </div>
+          </div>
+        </header>
+
+        {view === 'dashboard' && <DashboardHome />}
+        {view === 'interview' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+             <h1 className="text-4xl font-black">Choose Your Path</h1>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {TRACKS.map(t => (
+                  <div key={t.id} className="glass p-8 group relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 transition-transform">
+                      <Zap size={60} />
+                    </div>
+                    <div className="text-4xl mb-4">{t.icon}</div>
+                    <h3 className="text-xl font-bold mb-2">{t.name}</h3>
+                    <p className="text-sm text-slate-500 mb-6">{t.desc}</p>
+                    <div className="space-y-3">
+                      <button onClick={() => setActiveInterview({track: t, level: 'Beginner'})} className="w-full p-2 bg-white/5 border border-white/5 hover:border-cyan-500/50 rounded-lg text-xs font-bold uppercase tracking-wider transition-all">Beginner</button>
+                      <button onClick={() => setActiveInterview({track: t, level: 'Intermediate'})} className="w-full p-2 bg-white/5 border border-white/5 hover:border-cyan-500/50 rounded-lg text-xs font-bold uppercase tracking-wider transition-all">Intermediate</button>
+                      <button onClick={() => setActiveInterview({track: t, level: 'Advanced'})} className="w-full p-2 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500 hover:text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all">Advanced</button>
+                    </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+        )}
+        {view === 'analysis' && <AnalysisView />}
+        {view === 'roadmap' && <RoadmapView />}
+        {view === 'resume' && <ResumeBuilder />}
+        {view === 'achievements' && <AchievementsView />}
+      </main>
+    </div>
+  );
+};
+
+const PrepSphere = () => {
+  const { user } = useContext(AppContext);
+
+  if (!user) return <AuthSystem />;
+  if (!user.onboardingComplete) return <ProfileWizard />;
+  
+  return <MainLayout />;
+};
+
+export default function App() {
+  return (
+    <AppProvider>
+      <GlobalStyles />
+      <PrepSphere />
+    </AppProvider>
+  );
+}
